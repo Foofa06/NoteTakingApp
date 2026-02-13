@@ -1,61 +1,89 @@
 //
-//  ContentView.swift
-//  NoteTakingApp
+// ContentView.swift
+// NoteTakingApp
 //
-//  Created by Fawzia Jassim on 2/12/26.
+// Created by Fawzia Jassim on 2/09/26.
 //
 
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    
+    @StateObject private var viewModel = NotesViewModel()
+    @State private var showingAddView = false
+    
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        NavigationStack {
+            ZStack {
+                
+                // 💜 Pink → Purple Gradient Background
+                LinearGradient(
+                    colors: [Color.pink.opacity(0.3), Color.purple.opacity(0.3)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+                
+                List {
+                    ForEach(viewModel.notes) { note in
+                        
+                        NavigationLink(
+                            destination: NoteDetailView(note: note, viewModel: viewModel)
+                        ) {
+                            
+                            HStack {
+                                
+                                VStack(alignment: .leading, spacing: 6) {
+                                    
+                                    Text(note.title)
+                                        .font(.headline)
+                                        .foregroundColor(.purple)
+                                        .strikethrough(note.isCompleted)
+                                    
+                                    Text(note.content)
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                        .lineLimit(1)
+                                }
+                                
+                                Spacer()
+                                
+                                if note.isCompleted {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.pink)
+                                }
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 15)
+                                    .fill(Color.white)
+                                    .shadow(color: .purple.opacity(0.3), radius: 5)
+                            )
+                            .padding(.vertical, 6)
+                        }
+                        .listRowBackground(Color.clear)
                     }
+                    .onDelete(perform: viewModel.deleteNote)
                 }
-                .onDelete(perform: deleteItems)
+                .scrollContentBackground(.hidden)
             }
+            .navigationTitle("My Notes 🎀")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingAddView = true
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.pink)
+                            .font(.title2)
                     }
                 }
             }
-        } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+            .sheet(isPresented: $showingAddView) {
+                AddEditNoteView(viewModel: viewModel)
             }
         }
+        .tint(.purple)
     }
 }
 
-#Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
-}
